@@ -55,11 +55,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS: em produção usa CORS_ORIGINS; em dev permite qualquer origem
+# CORS: permite frontend em produção (Vercel/v0) e dev
 ENV = os.getenv("ENV", "development")
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "")
 if ENV == "production":
     allow_origins = [origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip()]
+    # Se CORS_ORIGINS não foi definido no Render, permite todas as origens para o frontend funcionar
+    if not allow_origins:
+        allow_origins = ["*"]
 else:
     allow_origins = ["*"]
 app.add_middleware(
