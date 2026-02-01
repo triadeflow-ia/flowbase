@@ -1,0 +1,20 @@
+# Ambiente
+.env
+.env.*
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Storage (uploads e outputs gerados)
+backend/storage/uploads/*
+backend/storage/outputs/*
+backend/storage/reports/*
+
+# Logs
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db

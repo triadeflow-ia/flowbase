@@ -1,0 +1,32 @@
+# Docker Compose para o GHL Data SaaS
+# Sobe Postgres (banco de dados) e Redis (fila de tarefas)
+
+services:
+  # Postgres: banco de dados que guarda informações dos jobs
+  postgres:
+    image: postgres:15
+    container_name: ghl-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ghluser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ghlpass}
+      POSTGRES_DB: ${POSTGRES_DB:-ghldb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Redis: fila para processar arquivos em background
+  redis:
+    image: redis:7-alpine
+    container_name: ghl-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+# Volumes: onde os dados ficam salvos mesmo se reiniciar
+volumes:
+  postgres_data:
+  redis_data:

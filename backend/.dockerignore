@@ -1,0 +1,9 @@
+# Evita copiar arquivos desnecessários para o container
+venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+.git/
+.gitignore
+*.md

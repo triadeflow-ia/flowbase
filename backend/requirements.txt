@@ -1,0 +1,32 @@
+# Dependências do Backend
+# Instale com: pip install -r requirements.txt
+
+# Framework web (servidor que recebe requisições HTTP)
+fastapi==0.109.2
+uvicorn==0.27.1
+
+# Upload de arquivos
+python-multipart==0.0.9
+
+# Banco de dados
+sqlalchemy>=2.0.40
+psycopg[binary]>=3.1.0
+
+# Fila de tarefas em background
+redis==5.0.1
+rq==1.16.0
+
+# Processamento de planilhas (versões com wheel no Windows)
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# Normalização de telefones
+phonenumbers==8.13.29
+
+# Variáveis de ambiente
+python-dotenv==1.0.1
+
+# Autenticação
+passlib[bcrypt]==1.7.4
+PyJWT==2.8.0
+email-validator==2.1.0

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GHL Data SaaS — Converter para GoHighLevel</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --error: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); }
+    .upload-zone input { display: none; }
+    .btn {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      margin-left: 0.5rem;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .status-queued { background: var(--warning); color: var(--bg); }
+    .status-processing { background: var(--accent); color: var(--bg); }
+    .status-done { background: var(--success); color: var(--bg); }
+    .status-failed { background: var(--error); color: #fff; }
+    .error-msg { color: var(--error); font-size: 0.9rem; margin-top: 0.5rem; }
+    .job-list { margin-top: 1rem; }
+    .job-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      gap: 1rem;
+    }
+    .job-item:last-child { border-bottom: none; }
+    .job-info { flex: 1; min-width: 0; }
+    .job-filename { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .job-meta { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; }
+    .job-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    pre {
+      background: var(--bg);
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .hidden { display: none !important; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .links { margin-top: 1rem; display: flex; gap: 1rem; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>GHL Data SaaS</h1>
+    <p class="subtitle">Converte planilhas XLSX/CSV para o formato de importação do GoHighLevel</p>
+
+    <div class="card">
+      <div class="upload-zone" id="uploadZone" title="Clique ou arraste o arquivo">
+        <input type="file" id="fileInput" accept=".xlsx,.csv">
+        <p><strong>Arraste</strong> uma planilha aqui ou <strong>clique</strong> para escolher</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Aceito: .xlsx ou .csv</p>
+      </div>
+      <div id="uploadError" class="error-msg hidden"></div>
+    </div>
+
+    <div class="card" id="currentJobCard" style="display: none;">
+      <h3 style="margin-top: 0;">Job em andamento</h3>
+      <p><strong>Arquivo:</strong> <span id="currentFilename"></span></p>
+      <p><strong>Status:</strong> <span id="currentStatus" class="status-badge"></span></p>
+      <p id="currentError" class="error-msg hidden"></p>
+      <div id="currentActions" class="job-actions hidden">
+        <button class="btn" id="btnPreview">Ver preview</button>
+        <button class="btn btn-secondary" id="btnReport">Ver report</button>
+        <a class="btn btn-secondary" id="btnDownload" href="#" download>Baixar CSV</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top: 0;">Jobs recentes</h3>
+      <p id="noJobs" style="color: var(--text-muted);">Nenhum job ainda.</p>
+      <div id="jobList" class="job-list"></div>
+    </div>
+
+    <div class="links">
+      <a href="/docs" target="_blank">API (Swagger)</a>
+      <a href="/health" target="_blank">Health</a>
+    </div>
+  </div>
+
+  <script>
+    const API = ''; // mesmo servidor
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadError = document.getElementById('uploadError');
+    const currentJobCard = document.getElementById('currentJobCard');
+    const currentFilename = document.getElementById('currentFilename');
+    const currentStatus = document.getElementById('currentStatus');
+    const currentError = document.getElementById('currentError');
+    const currentActions = document.getElementById('currentActions');
+    const btnPreview = document.getElementById('btnPreview');
+    const btnReport = document.getElementById('btnReport');
+    const btnDownload = document.getElementById('btnDownload');
+    const jobList = document.getElementById('jobList');
+    const noJobs = document.getElementById('noJobs');
+
+    function showError(el, msg) {
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+    function hideError(el) {
+      el.textContent = '';
+      el.classList.add('hidden');
+    }
+    function statusClass(s) {
+      return 'status-' + (s || 'queued');
+    }
+
+    uploadZone.onclick = () => fileInput.click();
+    uploadZone.ondragover = (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); };
+    uploadZone.ondragleave = () => uploadZone.classList.remove('dragover');
+    uploadZone.ondrop = (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      const f = e.dataTransfer?.files?.[0];
+      if (f) handleFile(f);
+    };
+    fileInput.onchange = () => {
+      const f = fileInput.files?.[0];
+      if (f) handleFile(f);
+    };
+
+    async function handleFile(file) {
+      const ext = (file.name || '').toLowerCase();
+      if (!['.xlsx', '.csv'].some(e => ext.endsWith(e))) {
+        showError(uploadError, 'Aceito apenas .xlsx ou .csv');
+        return;
+      }
+      hideError(uploadError);
+      const form = new FormData();
+      form.append('file', file);
+      try {
+        const r = await fetch(API + '/jobs', { method: 'POST', body: form });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          showError(uploadError, data.detail || `Erro ${r.status}`);
+          return;
+        }
+        fileInput.value = '';
+        showCurrentJob(data.id, file.name);
+        pollJob(data.id);
+        loadJobs();
+      } catch (e) {
+        showError(uploadError, 'Erro de rede: ' + e.message);
+      }
+    }
+
+    function showCurrentJob(id, filename) {
+      currentJobCard.style.display = 'block';
+      currentFilename.textContent = filename || id;
+      currentStatus.textContent = 'queued';
+      currentStatus.className = 'status-badge status-queued';
+      currentError.classList.add('hidden');
+      currentActions.classList.add('hidden');
+      currentJobCard.dataset.jobId = id;
+    }
+
+    async function pollJob(id) {
+      const maxAttempts = 60;
+      for (let i = 0; i < maxAttempts; i++) {
+        try {
+          const r = await fetch(API + '/jobs/' + id);
+          const job = await r.json();
+          if (!r.ok) break;
+          currentStatus.textContent = job.status;
+          currentStatus.className = 'status-badge ' + statusClass(job.status);
+          if (job.error_message) {
+            showError(currentError, job.error_message);
+          } else {
+            hideError(currentError);
+          }
+          if (job.status === 'done') {
+            currentActions.classList.remove('hidden');
+            btnDownload.href = API + '/jobs/' + id + '/download';
+            btnDownload.download = 'ghl_import_' + id + '.csv';
+            btnPreview.onclick = () => openPreview(id);
+            btnReport.onclick = () => openReport(id);
+            break;
+          }
+          if (job.status === 'failed') break;
+        } catch (_) {}
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    async function openPreview(id) {
+      try {
+        const r = await fetch(API + '/jobs/' + id + '/preview');
+        const data = await r.json();
+        alert(JSON.stringify(data, null, 2));
+      } catch (e) {
+        alert('Erro: ' + e.message);
+      }
+    }
+    async function openReport(id) {
+      try {
+        const r = await fetch(API + '/jobs/' + id + '/report');
+        const data = await r.json();
+        alert(JSON.stringify(data, null, 2));
+      } catch (e) {
+        alert('Erro: ' + e.message);
+      }
+    }
+
+    async function loadJobs() {
+      try {
+        const r = await fetch(API + '/jobs?limit=10');
+        const data = await r.json();
+        if (!r.ok) return;
+        const jobs = data.jobs || [];
+        noJobs.classList.toggle('hidden', jobs.length > 0);
+        jobList.innerHTML = '';
+        jobs.forEach(j => {
+          const div = document.createElement('div');
+          div.className = 'job-item';
+          const actions = j.status === 'done'
+            ? `<a class="btn btn-secondary" href="${API}/jobs/${j.id}/download" download>Baixar</a>`
+            : j.status === 'failed'
+              ? `<button class="btn btn-secondary" onclick="retryJob('${j.id}')">Retry</button>`
+              : '';
+          div.innerHTML = `
+            <div class="job-info">
+              <div class="job-filename">${escapeHtml(j.filename_original)}</div>
+              <div class="job-meta">${j.id} · ${new Date(j.created_at).toLocaleString('pt-BR')}</div>
+            </div>
+            <span class="status-badge ${statusClass(j.status)}">${j.status}</span>
+            <div class="job-actions">${actions}</div>
+          `;
+          jobList.appendChild(div);
+        });
+      } catch (_) {}
+    }
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+    async function retryJob(id) {
+      try {
+        await fetch(API + '/jobs/' + id + '/retry', { method: 'POST' });
+        loadJobs();
+      } catch (_) {}
+    }
+
+    loadJobs();
+  </script>
+</body>
+</html>
