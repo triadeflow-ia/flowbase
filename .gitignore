@@ -1,6 +1,7 @@
-# Ambiente
+# Ambiente (não versionar senhas; .env.example deve ser versionado)
 .env
-.env.*
+.env.local
+.env.*.local
 
 # Python
 venv/
